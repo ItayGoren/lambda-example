@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+
+set -e
+
+STACK_NAME="itay-test-stack"
+alike-cf-build --out project-template.yaml
+sam build --template-file project-template.yaml
+sam deploy \
+    --stack-name $STACK_NAME \
+    --no-confirm-changeset \
+    --no-fail-on-empty-changeset \
+    --capabilities "CAPABILITY_IAM" \
+    --region "us-east-1" \
+    --s3-bucket "alike-temp" \
+    --s3-prefix "xray-tests"
+./test

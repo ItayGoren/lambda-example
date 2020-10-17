@@ -1,0 +1,2 @@
+boto3
+serverless_utils

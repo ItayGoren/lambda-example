@@ -1,0 +1,4 @@
+*.orig
+*.swp
+.aws-sam/
+.alike-health/

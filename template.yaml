@@ -1,0 +1,93 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: delete this - Itay playing with stuff
+Globals:
+  Function:
+    Timeout: 180
+
+Resources:
+
+  Queue1DLQ:
+    Type: AWS::SQS::Queue
+
+  Queue1:
+    Type: AWS::SQS::Queue
+    Properties:
+      VisibilityTimeout: 180
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt Queue1DLQ.Arn
+        maxReceiveCount: 1
+
+  Queue2DLQ:
+    Type: AWS::SQS::Queue
+
+  Queue2:
+    Type: AWS::SQS::Queue
+    Properties:
+      VisibilityTimeout: 180
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt Queue1DLQ.Arn
+        maxReceiveCount: 1
+
+  Queue3DLQ:
+    Type: AWS::SQS::Queue
+
+  Queue3:
+    Type: AWS::SQS::Queue
+    Properties:
+      VisibilityTimeout: 180
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt Queue1DLQ.Arn
+        maxReceiveCount: 1
+
+  Lambda1:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: project/
+      Handler: api.handler1
+      Runtime: python3.8
+      Tracing: Active
+      Policies:
+        - AWSCloudFormationReadOnlyAccess
+        - AlikePolicy:
+            PolicyName: SendToQueue2
+            Resource:
+                !GetAtt Queue2.Arn
+            Actions:
+              - "sqs:SendMessage"
+      Events:
+        NewData:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt Queue1.Arn
+            BatchSize: 1
+
+  Lambda2:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: project/
+      Handler: api.handler2
+      Runtime: python3.8
+      Tracing: Active
+      Policies:
+        - AWSCloudFormationReadOnlyAccess
+        - AlikePolicy:
+            PolicyName: SendToQueue3
+            Resource:
+                !GetAtt Queue3.Arn
+            Actions:
+              - "sqs:SendMessage"
+      Events:
+        NewData:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt Queue2.Arn
+            BatchSize: 1
+
+Outputs:
+  Queue1Url:
+    Value: !Ref Queue1
+  Queue2Url:
+    Value: !Ref Queue2
+  Queue3Url:
+    Value: !Ref Queue3

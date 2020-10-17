@@ -1,0 +1,138 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: delete this - Itay playing with stuff
+Globals:
+  Function:
+    Timeout: 180
+Resources:
+  Queue1DLQ:
+    Type: AWS::SQS::Queue
+  Queue1:
+    Type: AWS::SQS::Queue
+    Properties:
+      VisibilityTimeout: 180
+      RedrivePolicy:
+        deadLetterTargetArn:
+          Fn::GetAtt:
+            - Queue1DLQ
+            - Arn
+        maxReceiveCount: 1
+  Queue2DLQ:
+    Type: AWS::SQS::Queue
+  Queue2:
+    Type: AWS::SQS::Queue
+    Properties:
+      VisibilityTimeout: 180
+      RedrivePolicy:
+        deadLetterTargetArn:
+          Fn::GetAtt:
+            - Queue1DLQ
+            - Arn
+        maxReceiveCount: 1
+  Queue3DLQ:
+    Type: AWS::SQS::Queue
+  Queue3:
+    Type: AWS::SQS::Queue
+    Properties:
+      VisibilityTimeout: 180
+      RedrivePolicy:
+        deadLetterTargetArn:
+          Fn::GetAtt:
+            - Queue1DLQ
+            - Arn
+        maxReceiveCount: 1
+  Lambda1:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: project/
+      Handler: api.handler1
+      Runtime: python3.8
+      Tracing: Active
+      Policies:
+        - AWSCloudFormationReadOnlyAccess
+        - Ref: SendToQueue2
+      Events:
+        NewData:
+          Type: SQS
+          Properties:
+            Queue:
+              Fn::GetAtt:
+                - Queue1
+                - Arn
+            BatchSize: 1
+  Lambda2:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: project/
+      Handler: api.handler2
+      Runtime: python3.8
+      Tracing: Active
+      Policies:
+        - AWSCloudFormationReadOnlyAccess
+        - Ref: SendToQueue3
+      Events:
+        NewData:
+          Type: SQS
+          Properties:
+            Queue:
+              Fn::GetAtt:
+                - Queue2
+                - Arn
+            BatchSize: 1
+  CloudWatchRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - apigateway.amazonaws.com
+            Action: sts:AssumeRole
+      Path: /
+      ManagedPolicyArns:
+        - Fn::Sub: arn:${AWS::Partition}:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs
+  Account:
+    Type: AWS::ApiGateway::Account
+    Properties:
+      CloudWatchRoleArn:
+        Fn::GetAtt:
+          - CloudWatchRole
+          - Arn
+  SendToQueue2:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - sqs:SendMessage
+            Resource:
+              - Fn::GetAtt:
+                  - Queue2
+                  - Arn
+  SendToQueue3:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - sqs:SendMessage
+            Resource:
+              - Fn::GetAtt:
+                  - Queue3
+                  - Arn
+Outputs:
+  Queue1Url:
+    Value:
+      Ref: Queue1
+  Queue2Url:
+    Value:
+      Ref: Queue2
+  Queue3Url:
+    Value:
+      Ref: Queue3
